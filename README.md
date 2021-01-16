@@ -1,8 +1,7 @@
-
 # windpywrapper
 
-- v0.6 / 2021-01-04 / under heavy development 
-- 对Wind Python API进行封装，整合功能，并进行一定拓展，实现更简单易用
+- v0.5 / 2021-01-16 / under heavy development 
+- 对Wind Python API进行封装，整合功能，并进行一定拓展，实现数据提取、画图等更简单易用
 - √ 适用的场景：宏观研究、证券研究、组合业绩评估、资产配置等
 - × 不适用的场景：需要快速数据响应和处理，如行情监测、高频交易等
 
@@ -10,7 +9,7 @@
 
 ### 重要提示
 
-- 此工具包仅用于日常研究，请勿用于任何商业用途
+- 此工具包仅用于日常个人研究，请勿用于任何商业用途
 - 使用此工具包需先自行购买开通Wind API服务权限
 - 开发者未对工具包的功能进行全面、严格的测试，不保证各项功能在任何情况下都可以正常使用，不保证使用此工具包获取的数据的完整性和准确性，使用此工具包带来的任何后果和责任与开发者无关
 - *如有任何建议或意见，欢迎留言，开发者将认真听取您的建议和意见，并进行持续更新*
@@ -19,7 +18,7 @@
 
 ### 开发初衷
 
-Wind金融终端及相关数据服务是金融从业者日常工作中的重要工具，其数据API为读取各类数据提供了极大的便利。由于原始API的功能理应具有通用性和基础性，因此直接使用时会在一定程度上加大代码量并降低可读性。考虑金融从业者日常工作实际，对经常要使用到的wsd、wss、wsee、wset、edb以及各类日期相关函数等进行了功能整合。当前主要完成以Wind API为核心的数据读取功能，后期将在此基础上进一步整合其他统计分析功能，以期实现功能较为完备的综合型金融分析工具包。
+Wind金融终端及相关数据服务是金融从业者日常工作中的重要工具，其数据API为读取各类数据提供了极大的便利。由于原始API的功能理应具有通用性和基础性，因此直接使用时会在一定程度上加大代码量并降低可读性。考虑金融从业者日常工作实际，本工具包对经常要使用到的wsd、wss、wsee、wset、edb以及各类日期处理相关函数等进行了功能整合。当前主要完成以Wind API为核心的数据读取功能，后期将在此基础上进一步整合其他统计分析功能，以期实现功能较为完备的综合型金融分析工具包。
 
 ---
 
@@ -27,7 +26,7 @@ Wind金融终端及相关数据服务是金融从业者日常工作中的重要�
 
 - **统一的数据格式**
 
-将Wind Python API返回的数据全部统一转换为pandas DataFrame/Series数据格式，并针对单日期、单字段等数据进行自动格式优化转换。统一数据格式如下:
+将Wind API返回的数据全部统一转换为pandas DataFrame/Series数据格式，并针对单日期、单字段等数据进行自动格式优化转换。统一数据格式如下:
 
 |   |field_1|field_1|...|field_1|...|field_n|field_n|...|field_n|
 |-|-:|-:|-:|-:|-:|-:|-:|-:|-:|
@@ -37,7 +36,7 @@ Wind金融终端及相关数据服务是金融从业者日常工作中的重要�
 |...|...|...|...|...|...|...|...|...|...|
 |**date_t**|*data*|*data*|...|*data*|...|*data*|*data*|...|*data*|
 
-通过不同的字段（field）、代码（code）和日期（date）结构组合，分别表示时间序列数据、截面数据、面板数据等。
+通过不同的字段（field）、代码（code）和日期（date）结构组合，可分别表示时间序列数据、截面数据、面板数据等。
 
 - **统一的时间（日期）格式**
 
@@ -55,15 +54,18 @@ Wind金融终端及相关数据服务是金融从业者日常工作中的重要�
 
 支持使用“Patsy算式”（类似R formulas）进行指标间计算，极大提高宏观经济数据等的处理效率，例如：
 计算M1-M2剪刀差，原始数据为包含M1同比增速和M2同比增速的名为data的pandas DataFrame，列名分别为m1_yoy, m2_yoy
-则可使用cols_calc()函数（具体用法见后文）：
+则可使用cols_calc()函数得到M1-M2剪刀差时间序列的DataFrame（具体用法见后文）：
 
 ```python
-cols_calc("m2_yoy - m1_yoy", data)
+# 第一步：读取M2，M1同比数据
+data = wind_series("M0001385, M0001383", "EDB", "2010-01-01", "2020-01-01")
+data.columns = ["m2_yoy", "m1_yoy"]
+# 第二步：直接结算M1-M2剪刀差
+m2m1_diff = cols_calc("m2_yoy - m1_yoy", data)
 ```
 
-即可返回M1-M2剪刀差时间序列的DataFrame。
-
 除四则运算外，还支持numpy，pandas内置的各种运算符或函数，如：
+
 ```python
 # 以下算式或不具有经济学含义，仅用于示例说明
 cols_calc("np.log(m2_yoy) - m1_yoy", data)
@@ -83,7 +85,7 @@ cols_calc("m2_yoy.rolling(5).mean() + m1_yoy.pct_change(2)", data)
 工具包现包含datafeed_wind，datetools和utils三个文件，功能如下：
 
 >  - datafeed_wind：读取时间序列数据、截面数据、面板数据等
->  - datetools：处理时间数据（目前主要依托Wind Python API）
+>  - datetools：处理时间数据（目前主要依托Wind API）
 >  - utils：支持运行的工具函数
 
 以下功能在开发过程中（按优先度排序），后期将逐步整合至工具包中，并对现有文件架构进行调整：
@@ -114,20 +116,22 @@ from datatools import TODAY, to_pd_timestamp
 
 #### 1.1 指数/板块成份查询
 
-**wind_components(wind_codes, date, show_name=False)**
+``` python
+wind_components(wind_codes, date, show_name=False)
+```
 
 **获取指数或板块成分的Wind代码（和名称）**
 
 > 参数：
->  - **wind_codes：string，list**
+>  - wind_codes：string，list
 >
 >  Wind代码：普通代码（如沪深300指数：000300.SH）或板块代码（如Wind中国公募开放式基金板块代码：2001000000000000），目前仅支持单代码查询，若输入包含多个代码的字符串或列表，则只查询第一个代码
 >
->  - **date：python datetime，pandas Timestamp，numpy datetime64，QuantLib date，支持Wind日期宏（用法详见Wind API文档），支持内置日期常量（后文详述），关于Wind日期宏的使用请参考*Z.提示***
+>  - date：python datetime，pandas Timestamp，numpy datetime64，QuantLib date，支持Wind日期宏（用法详见Wind API文档），支持内置日期常量（后文详述），关于Wind日期宏的使用请参考*Z.提示*
 >
->  查询日期，默认为最近交易日
+>  查询日期：默认为最近交易日
 >
->  - **show_name：bool，默认为False**
+>  - show_name：bool，默认为False
 >
 >  是否显示成分名称，默认不显示，True将以字典格式返回成份代码和成份名称（key为代码，value为名称）
 >
@@ -135,11 +139,12 @@ from datatools import TODAY, to_pd_timestamp
 >
 > 返回值：
 >
-> - **list或dict**
+> - list 或 dict
 >
 > 若show_name = False，返回成份代码列表，可直接作为wind_series等函数的输入值；若show_name = True，返回成份代码和成份名称构成的字典
 
 示例：
+
 ```python
 # -------------------------------------------------
 # 指数成分查询：
@@ -160,33 +165,36 @@ wind_components("2001000000000000", show_name=True)
 
 #### 1.2 时间序列查询
 
-**wind_series(wind_codes, fields, start_date, end_date=TODAY, ** kwargs)**
+``` python
+wind_series(wind_codes, fields, start_date, end_date=TODAY, **kwargs)
+```
 
 **查询常规时间序列数据**
 
 > 参数：
 >
->  - **wind_codes：string，list**
+>  - wind_codes：string，list
 >
 >  字符串或列表格式的Wind代码，包括普通代码（如沪深300指数：000300.SH），板块代码（如Wind中国公募开放式基金板块：2001000000000000），宏观经济数据代码（如中国GDP不变价当季同比：M0039354）；支持多代码查询，但不支持普通代码、板块代码或宏观经济数据代码混查（如["000300.SH", "M0039354"]）
 >
->  - **fields：string，list**
+>  - fields：string，list
 >
 >  字符串或列表格式的查询字段，支持多字段查询；如字段名为“edb”（不区分大小写），则自动查询经济数据库数据，功能等同于使用wind_edb()
 >
->  - **start_date，end_date：python datetime，pandas Timestamp，numpy datetime64，QuantLib date，支持Wind日期宏（用法详见Wind API文档），支持内置日期常量（后文详述），关于Wind日期宏的使用请参考*Z.提示***
+>  - start_date，end_date：python datetime，pandas Timestamp，numpy datetime64，QuantLib date；支持Wind日期宏（用法详见Wind API文档），支持内置日期常量（后文详述），关于Wind日期宏的使用请参考*Z.提示*
 >
 >  查询的起止时间，对于市场行情数据，默认截止时间为最近交易日，对于宏观经济数据等，默认截止时间为当日
 >
->  - ** **kwargs**
+>  - **kwargs
 >
->  支持原Wind API函数的各可选参数，具体用法请参考Wind Python API文档
+>  支持原Wind API函数的各可选参数，具体用法请参考Wind API文档
 >
 > ---
 >
 > 返回值：
 >
-> - **pandas DataFrame**
+> - pandas DataFrame
+> 
 > 同时查询多代码、多字段时，pandas DataFrame数据表的列标签自动分为field和code两级，field对应字段，code对应代码；由于此数据结构较为复杂，在引用时可读性低，故不建议使用多代码、多字段查询
 
 示例：
@@ -215,31 +223,36 @@ wind_series("M0000545, M0041664", "EDB", "-2Y", TODAY)
 wind_edb(["M0000545", "M0041664"], "-2Y", TODAY)
 ```
 
-**wind_edb(wind_codes, start_date, end_date=TODAY, period=None, ** kwargs)**
-
 **查询宏观经济库（Wind EDB）数据**
 
+``` python
+wind_edb(wind_codes, start_date, end_date=TODAY, period=None, **kwargs)
+```
+
 > 参数：
->  - **wind_codes：string，list**
+>  - wind_codes：string，list
 >
 > 字符串或列表格式的Wind EDB指标代码；支持多代码查询
 >
->  - **start_date，end_date：python datetime，pandas Timestamp，numpy datetime64，QuantLib date，支持Wind日期宏（用法详见Wind API文档），支持内置日期常量（后文详述），关于Wind日期宏的使用请参考*Z.提示***
+>  - start_date，end_date：python datetime，pandas Timestamp，numpy datetime64，QuantLib date，支持Wind日期宏（用法详见Wind API文档），支持内置日期常量（后文详述），关于Wind日期宏的使用请参考*Z.提示*
 >
 >  查询的起止时间，默认截止时间为当日
 >
->  - **period：string，默认为None**
+>  - period：string，默认为None
 >
->  数据时间周期，y=年，q=季度，m=月，w=周，d=日；默认为None，即返回edb函数返回的原始数据，若指定周期，则对edb函数返回的原始时间序列进行变频（resampling）；**注意：在Wind EDB中读取市场行情数据（如沪深300指数收盘点位，代码M0020209）时，若不指定period，则返回数据对应的日期为“不规则的”交易所日历日，若设定period为某个特定时间周期，此函数会自动将交易所日历日与自然日对齐，并按照ffill方法（propagate last valid observation forward to next valid）填充非交易日的数据，这样处理是为了保证行情数据能够与同频率的宏观经济数据在日期上对齐，以便进行时间序列计算或画图**
->  - ** **kwargs**
+>  数据时间周期，y=年，q=季度，m=月，w=周，d=日；默认为None，即返回edb函数返回的原始数据，若指定周期，则对edb函数返回的原始时间序列进行变频（resampling）
+>  
+>  **注意：在Wind EDB中读取市场行情数据（如沪深300指数收盘点位，对应EDB代码M0020209）时，若不指定period，则返回数据对应的日期为“不规则的”交易所日历日，若设定period为某个特定时间周期，此函数会自动将交易所日历日与自然日对齐，并按照forward filling方法填充非交易日的数据，这样处理是为了保证行情数据能够与同频率的宏观经济数据在日期上对齐，以便进行时间序列计算或画图**
+>  
+>  - **kwargs
 >
->  支持原Wind API函数的各可选参数，具体用法请参考Wind Python API文档
+>  支持原Wind API函数的各可选参数，具体用法请参考Wind API文档
 >
 > ---
 >
 > 返回值：
 >
-> - **pandas DataFrame**
+> - pandas DataFrame
 
 示例：
 
@@ -267,23 +280,25 @@ wind_series("M0000545, M0041664", "EDB", "-2Y", TODAY)
 wind_edb(["M0000545", "M0041664"], "-2Y", TODAY)
 ```
 
-#### 1.3 截面数据查询
+#### 1.3 截面数据查询（测试中，可能存在意外错误）
 
-**wind_crosec(wind_codes, fields, ** kwargs)**
+``` python
+wind_crosec(wind_codes, fields, **kwargs)
+```
 
-**查询截面数据查询（测试中，可能存在意外错误）**
+**查询截面数据**
 
 > 参数：
 >
->  - **wind_codes：string，list**
+>  - wind_codes：string，list
 >
 >  字符串或列表格式的Wind代码；支持多代码查询
 >
->  - **fields：string，list**
+>  - fields：string，list
 >
 >  字符串或列表格式的查询字段，支持多字段查询；不建议使用多代码、多指标查询，避免数据表结构过于复杂
 >
->  - ** **kwargs**
+>  - **kwargs
 >
 >  支持原Wind API函数的各可选参数；查询截面数据的可选参数规则多样，请先查询Wind API文档或使用Wind终端的代码生成器（快捷键：CG）查询
 >
@@ -291,7 +306,7 @@ wind_edb(["M0000545", "M0041664"], "-2Y", TODAY)
 >
 > 返回值：
 >
-> - **pandas DataFrame**
+> - pandas DataFrame
 
 示例：
 
@@ -299,7 +314,7 @@ wind_edb(["M0000545", "M0041664"], "-2Y", TODAY)
 # -------------------------------------------------
 # 板块成分查询：
 # 查询全部Wind中国公募开放式基金的一级分类和二级分类
-fund_code = wind_components("2001000000000000")[:100] # Wind中国公募开放式基金
+fund_code = wind_components("2001000000000000")[:100] # Wind中国公募开放式基金（取钱100）
 fields = [
     "fund_firstinvesttype", # 基金类别-证监会规则
     "fund_investtype2", # 基金类别-Wind规则：证监会规则下的细类（二级：fundtype=2）
@@ -307,11 +322,12 @@ fields = [
 fund_type = wind_crosec(fund_code, fields, tradedate=TODAY, fundtype=2)
 ```
 
-注：以上代码在使用wind_components查询成分基金代码时，考虑之后的查询量较大，后面加写[:100]仅取部分基金
-
 #### 1.4 面板数据查询（开发中...）
 
-**wind_panel(wind_code, fields, ** kwargs)**
+``` python
+wind_panel(wind_code, fields, **kwargs)
+```
+**查询面板数据**
 
 ---
 
@@ -436,8 +452,8 @@ Wind API提供日期宏功能，特定的字符串代表对应的日期（如"LM
 
 #### 不推荐单次查询过大的数据量
 
-Wind Python API内置函数有单次查询数据量上限，如（wsd单次查询数据量为8000单元格，其他详见Wind Python API文档），此工具包通过循环查询+自动拼接的方式可以实现“理论上”单次任意查询量，但仍不推荐单次查询过大的数据量（如全部A股在过去5年的收盘价数据对应约300万单元格的数据量），原因如下：1、由于进行循环查询，可能导致查询较慢，当网络不稳定时易造成查询失败；2、大量查询会占用过多数据流量，超限后会导致未来7*24小时无法再使用Wind Python API中的大部分函数查询功能；3、由于第2项原因，开发者难以对超大数据查询进行足够的测试，因此可能存在功能不稳定的情况。
+Wind API内置函数有单次查询数据量上限，如（wsd单次查询数据量为8000单元格，其他详见Wind API文档），此工具包通过循环查询+自动拼接的方式可以实现“理论上”单次任意查询量，但仍不推荐单次查询过大的数据量（如全部A股在过去5年的收盘价数据对应约300万单元格的数据量），原因如下：1、由于进行循环查询，可能导致查询较慢，当网络不稳定时易造成查询失败；2、大量查询会占用过多数据流量，超限后会导致未来7x24小时无法再使用Wind API中的大部分函数查询功能；3、由于第2项原因，开发者难以对超大数据查询进行足够的测试，因此可能存在功能不稳定的情况。
 
 #### 对代码格式的判断可能有误
 
-为了进一步简化Wind Python API函数的使用操作，此工具包中部分函数会对输入的Wind代码进行自动识别。由于Wind未公开普通Wind代码（如股票代码、基金代码、债券代码等）、板块代码（如全部A股板块代码、中国开放式公募基金板块代码等）、宏观经济数据库代码（如工业增加值当月同比代码）的命名规则，此工具包仅依据可查的代码总结其命名规律。因此在通过代码格式判断其类别时，可能存在判断有误的情况（尽管已经进行了大量的测试）。
+为了进一步简化Wind API函数的使用操作，此工具包中部分函数会对输入的Wind代码进行自动识别。由于Wind未公开普通Wind代码（如股票代码、基金代码、债券代码等）、板块代码（如全部A股板块代码、中国开放式公募基金板块代码等）、宏观经济数据库代码（如工业增加值当月同比代码）的命名规则，此工具包仅依据可查的代码总结其命名规律。因此在通过代码格式判断其类别时，可能存在判断有误的情况（尽管已经进行了大量的测试）。
